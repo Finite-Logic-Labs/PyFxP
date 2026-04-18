@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# pyfxp — PUBLIC REPO / PyPI pyproject.toml
+#
+# This package ships:
+#   - fix_point.py          (open source, pure Python)
+#   - types.py              (open source, pure Python)
+#   - graph.<ext>           (pre-compiled binary, closed source)
+#   - node.<ext>            (pre-compiled binary, closed source)
+#   - rtlgen.<ext>          (pre-compiled binary, closed source)
+#
+# The .so/.pyd binaries are committed directly to this repo under
+# src/pyfxp/ and are included via package_data below.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "pyfxp"
+version = "0.1.0"
+description = "Hardware-indicative fixed-point arithmetic and HDL generation"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Alex Crownshaw", email = "alex.crownshaw@finitelogiclabs.com" }
+]
+dependencies = ["jinja2"]
+
+[project.urls]
+Repository = "https://github.com/yourname/pyfxp"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+# ── Package discovery ────────────────────────────────────────────────────────
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Include the pre-compiled binaries alongside the Python source.
+# setuptools will pick up any .so or .pyd files matching these globs.
+[tool.setuptools.package-data]
+pyfxp = ["*.so", "*.pyd", "*.dylib"]
+
+# ── Pytest ───────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]

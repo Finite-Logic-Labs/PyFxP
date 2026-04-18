@@ -1,0 +1,26 @@
+# ── CRITICAL: closed source files must never appear here ─────────────────────
+src/pyfxp/graph.py
+src/pyfxp/node.py
+src/pyfxp/rtlgen.py
+
+# ── Build artifacts ───────────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Cython intermediate files (not the .so outputs — those are committed) ────
+*.c
+*.html          # Cython annotation files
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
