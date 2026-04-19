@@ -13,8 +13,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyfxp"
