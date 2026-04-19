@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 from .node import Node, NodeType, NodeEnum
@@ -42,15 +44,14 @@ class FixedPoint:
         )
 
         # Convert input
-        match val:
-            case int():
-                raw_int_val = val
-            case float():
-                raw_int_val = int(val * (1 << self._fract_width))  # truncate toward zero — free in HW
-            case str():
-                raw_int_val = self._bin_to_int(val)
-            case _:
-                raise TypeError("Value must be float, int, or binary str")
+        if isinstance(val, int):
+            raw_int_val = val
+        elif isinstance(val, float):
+            raw_int_val = int(val * (1 << self._fract_width))  # truncate toward zero — free in HW
+        elif isinstance(val, str):
+            raw_int_val = self._bin_to_int(val)
+        else:
+            raise TypeError("Value must be float, int, or binary str")
 
         # Clip
         if raw_int_val > self._max_val:
@@ -71,14 +72,15 @@ class FixedPoint:
         self._val_float = self._int_to_float(self._val_int)
         self._val_bin = self._int_to_bin(self._val_int)
 
-        # User-provided label is preserved; unique label is only used as fallback
-        self._label = label if label is not None else Graph._unique_label(self)
+        self._label = label  # set first so the label property doesn't raise
+        if self._label is None:
+            self._label = Graph._unique_label(self)
 
         Graph.log(Node(fxp_a=self, fxp_b=None, fxp_res=None, type=NodeType(NodeEnum.VAR)))
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Properties
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     @property
     def val_float(self) -> float:
@@ -120,9 +122,9 @@ class FixedPoint:
     def label(self, val: str) -> None:
         self._label = val
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Internal helpers
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def _int_to_float(self, val_int: int) -> float:
         if self._signed.val:
@@ -158,9 +160,9 @@ class FixedPoint:
 
         return fxpa, fxpb
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Arithmetic
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def __add__(self, fxpb: "FixedPoint") -> "FixedPoint":
         if not isinstance(fxpb, FixedPoint):
@@ -221,11 +223,11 @@ class FixedPoint:
     def __abs__(self) -> "FixedPoint":
         return FixedPoint(abs(self._val_int), self._int_width, self._fract_width, self._signed)
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Comparison
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
-    def _cmp_val(self, other: "FixedPoint") -> tuple[int, int]:
+    def _cmp_val(self, other: "FixedPoint") -> "tuple[int, int]":
         """Return aligned integer values for comparison."""
         a, b = self._fract_width_ext(other)
         return a.val_int, b.val_int
@@ -263,9 +265,9 @@ class FixedPoint:
     def __hash__(self):
         return hash((self._val_int, self._int_width, self._fract_width, self._signed.val))
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Numeric conversions
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def __float__(self) -> float:
         return self._val_float
@@ -276,9 +278,9 @@ class FixedPoint:
     def __bool__(self) -> bool:
         return self._val_int != 0
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Bit shifts
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def __lshift__(self, n: int) -> "FixedPoint":
         """
@@ -286,40 +288,41 @@ class FixedPoint:
         Increases int_width by n to reflect the expanded integer range;
         fract_width is unchanged. Clipping is applied against the new bounds.
         """
-        shifted_val = self._val_int << n
-        return FixedPoint(shifted_val, self._int_width + n, self._fract_width, self._signed)
+        return FixedPoint((self._val_int << n), (self._int_width + n), self._fract_width, self._signed)
 
     def __rshift__(self, n: int) -> "FixedPoint":
         """
         Right-shift the fixed-point value by n bits.
-        Increases fract_width by n to reflect the expanded fractional range;
-        int_width is unchanged. Arithmetic shift for signed, logical for unsigned.
+        Increases fract_width by n — the binary point moves right, so the
+        represented value halves per shift. val_int is NOT shifted; the same
+        bit pattern is reinterpreted in the wider fractional format.
+        This mirrors __lshift__ which shifts val_int and grows int_width:
+          lshift: val_int <<= n, int_width += n  (value doubles per shift)
+          rshift: val_int unchanged, fract_width += n  (value halves per shift)
+        Both are free in hardware — lshift widens the integer bus,
+        rshift widens the fractional bus.
         """
-        if self._signed.val:
-            shifted_val = self._val_int >> n
-        else:
-            shifted_val = (self._val_int & ((1 << self._total_width) - 1)) >> n
-        return FixedPoint(shifted_val, self._int_width, self._fract_width + n, self._signed)
+        return FixedPoint(self._val_int, self._int_width, (self._fract_width + n), self._signed)
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Scaling
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def bsl_scale(self, n: int) -> "FixedPoint":
         """Scale up by 2^n, operating on val_int to avoid float rounding."""
         return FixedPoint(self._val_int << n, self._int_width + n, self._fract_width, self._signed)
 
     def bsr_scale(self, n: int) -> "FixedPoint":
-        """Scale down by 2^n, operating on val_int to avoid float rounding."""
-        if self._signed.val:
-            shifted_val = self._val_int >> n
-        else:
-            shifted_val = (self._val_int & ((1 << self._total_width) - 1)) >> n
-        return FixedPoint(shifted_val, self._int_width, self._fract_width + n, self._signed)
+        """
+        Scale down by 2^n by widening fract_width without shifting val_int.
+        Consistent with __rshift__: the bit pattern is reinterpreted in a
+        wider fractional format rather than arithmetically shifted.
+        """
+        return FixedPoint(self._val_int, self._int_width, self._fract_width + n, self._signed)
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Quantisation helper
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def requantize(self, int_width: int, fract_width: int, signed: bool | SignType | None = None) -> "FixedPoint":
         """
@@ -347,9 +350,9 @@ class FixedPoint:
 
         return FixedPoint(new_int, int_width, fract_width, target_signed)
 
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
     # Representation
-    # ==========================================================================
+    # ──────────────────────────────────────────────────────────────────────────
 
     def __repr__(self) -> str:
         sign_char = "S" if self.signed else "U"
@@ -359,3 +362,4 @@ class FixedPoint:
             f"{sign_char}, "
             f"label='{self._label}')"
         )
+    

@@ -13,18 +13,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyfxp"
-version = "0.1.2"
+version = "0.1.0"
 description = "Hardware-indicative fixed-point arithmetic and HDL generation"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
-    { name = "Alex Crownshaw", email = "alex.crownshaw@finitelogiclabs.com" }
+    { name = "Your Name", email = "your@email.com" }
 ]
 dependencies = ["jinja2"]
 
